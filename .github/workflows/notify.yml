@@ -1,0 +1,42 @@
+name: Money notifications
+on:
+  schedule:
+    - cron: "30 16 * * *"   # 10:00 PM IST every day -> daily check-in email
+    - cron: "30 2 1 * *"    # 8:00 AM IST on the 1st -> monthly email report
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which job to run now (for testing)
+        type: choice
+        options: [daily, monthly]
+        default: daily
+permissions:
+  contents: read
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-notify.txt
+      - name: Pick job
+        id: pick
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "job=${{ inputs.job }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "30 2 1 * *" ]; then
+            echo "job=monthly" >> "$GITHUB_OUTPUT"
+          else
+            echo "job=daily" >> "$GITHUB_OUTPUT"
+          fi
+      - run: python notifier.py ${{ steps.pick.outputs.job }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          APP_URL: ${{ secrets.APP_URL }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
