@@ -1,2 +1,3 @@
 pandas
-gspread
+sqlalchemy
+psycopg2-binary
