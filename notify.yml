@@ -33,6 +33,7 @@ jobs:
           fi
       - run: python notifier.py ${{ steps.pick.outputs.job }}
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           APP_URL: ${{ secrets.APP_URL }}
