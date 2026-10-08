@@ -128,8 +128,8 @@ def require_online_setup():
     if missing:
         sys.exit(f"Missing secrets: {', '.join(missing)}. Add them in GitHub -> Settings -> Secrets -> Actions.")
     if using_local_file():
-        sys.exit("SHEET_ID / GOOGLE_SERVICE_ACCOUNT_JSON are missing, so there is no data to report. "
-                 "Add them in GitHub -> Settings -> Secrets -> Actions.")
+        sys.exit("DATABASE_URL is missing, so there is no data to report. "
+                 "Add it in GitHub -> Settings -> Secrets -> Actions.")
 
 
 def last_month():
