@@ -1,0 +1,51 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "Your Streamlit link, e.g. https://my-money.streamlit.app"
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Put your link into the app
+        env:
+          APP_URL_INPUT: ${{ inputs.app_url }}
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          url = os.environ["APP_URL_INPUT"].strip().rstrip("/")
+          m = re.fullmatch(r"https://([A-Za-z0-9.-]+)", url)
+          if not m:
+              sys.exit("Link must look like https://your-app.streamlit.app (https only, no extra path).")
+          host = m.group(1)
+          p = "android-app/app/src/main/java/com/familymoney/tracker/MainActivity.java"
+          s = open(p, encoding="utf-8").read()
+          s = re.sub(r'(APP_HOST\s*=\s*)"[^"]*"', lambda x: f'{x.group(1)}"{host}"', s)
+          s = re.sub(r'(APP_URL\s*=\s*)"[^"]*"', lambda x: f'{x.group(1)}"https://{host}/?embed=true"', s)
+          open(p, "w", encoding="utf-8").write(s)
+          print("App will open:", f"https://{host}/?embed=true")
+          PY
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build APK
+        working-directory: android-app
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoneyTracker-APK
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
