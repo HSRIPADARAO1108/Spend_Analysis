@@ -50,9 +50,35 @@ def _sql_url():
     if not url:
         return None
     url = str(url).strip()
+    if "=" in url.split("://")[0]:  # pasted 'DATABASE_URL = "postgresql://..."'
+        url = url.split("=", 1)[1].strip()
+    url = url.strip("'\"").strip()  # remove quote marks
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return url
+
+
+def _with_driver(url):
+    """Newer SQLAlchemy defaults to the 'psycopg' driver; use whichever one is installed."""
+    if not url.startswith("postgresql://"):
+        return url
+    try:
+        import psycopg2  # noqa: F401
+        drv = "postgresql+psycopg2://"
+    except ImportError:
+        drv = "postgresql+psycopg://"
+    return drv + url[len("postgresql://"):]
+
+
+def _check_url(url):
+    """Give a clear message (never printing the password) when the link is wrong."""
+    scheme = url.split("://")[0] if "://" in url else ""
+    if scheme not in ("postgresql", "postgresql+psycopg2", "sqlite"):
+        raise ValueError("DATABASE_URL must start with postgresql:// (copy the Session pooler "
+                         "connection string from Supabase -> Connect). The value you set does not.")
+    if "[" in url or "]" in url:
+        raise ValueError("DATABASE_URL still has [ ] brackets. Replace [YOUR-PASSWORD], including "
+                         "the brackets, with your real password.")
 
 
 def using_local_file():
@@ -179,7 +205,12 @@ def _sql():
             Column("member", String), Column("type", String), Column("category", String),
             Column("amount", Float), Column("note", String), Column("date", String),
         )
-        _engine = create_engine(_sql_url(), pool_pre_ping=True)
+        _check_url(_sql_url())
+        try:
+            _engine = create_engine(_with_driver(_sql_url()), pool_pre_ping=True)
+        except Exception:
+            raise ValueError("DATABASE_URL could not be read. Use only letters and numbers in the "
+                             "database password, and paste only the link (no quotes, no name=).") from None
         meta.create_all(_engine)
     return _engine, _table
 
