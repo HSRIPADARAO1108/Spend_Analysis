@@ -266,8 +266,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 if using_local_file():
-    st.warning("⚠️ Not connected to Google Sheets yet, so data is temporary. Add SHEET_ID and "
-               "GOOGLE_SERVICE_ACCOUNT_JSON in Streamlit secrets so entries are saved and emails can see them.")
+    st.warning("⚠️ Not connected to a database yet, so data is temporary. Add DATABASE_URL in "
+               "Streamlit secrets so entries are saved and the emails can see them.")
 
 df = load(member)
 today = now.date()
