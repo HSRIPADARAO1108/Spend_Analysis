@@ -1,9 +1,8 @@
-"""Shared storage for the app and the notifier: a Google Sheet.
-
-Needs two secrets (environment variable or Streamlit secret):
-  SHEET_ID                      the long id in the sheet's web address
-  GOOGLE_SERVICE_ACCOUNT_JSON   the full contents of the service-account key file
-Without them it falls back to a local CSV file (for testing only; it is wiped on Streamlit Cloud).
+"""Shared storage for the app and the notifier. First one that is configured wins:
+  1. DATABASE_URL                       any Postgres (Supabase, Neon, Aiven, CockroachDB...)
+  2. SHEET_ID + GOOGLE_SERVICE_ACCOUNT_JSON   a Google Sheet
+  3. nothing set                        local CSV file (testing only; wiped on Streamlit Cloud)
+Each value can be an environment variable or a Streamlit secret.
 """
 import csv
 import json
@@ -46,8 +45,18 @@ def _creds():
     return sid, json.loads(raw)
 
 
+def _sql_url():
+    url = _secret("DATABASE_URL")
+    if not url:
+        return None
+    url = str(url).strip()
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
 def using_local_file():
-    return _creds() is None
+    return _sql_url() is None and _creds() is None
 
 
 # ---------- stores ----------
@@ -121,7 +130,7 @@ def _to_id(x):
 
 
 # ---------- public API (same as before) ----------
-def add_entry(member, typ, cat, amount, note, d):
+def _list_add_entry(member, typ, cat, amount, note, d):
     vals = _values()
     used = [i for i in (_to_id(r[0]) for r in vals[1:] if r) if i is not None]
     row = [max(used, default=0) + 1, member, typ, cat, float(amount), note, d.isoformat()]
@@ -130,7 +139,7 @@ def add_entry(member, typ, cat, amount, note, d):
     _invalidate()
 
 
-def delete_entries(ids):
+def _list_delete_entries(ids):
     want = {int(i) for i in ids}
     vals = _values()
     nums = [n for n, r in enumerate(vals, start=1) if n > 1 and r and _to_id(r[0]) in want]
@@ -139,7 +148,7 @@ def delete_entries(ids):
     _invalidate()
 
 
-def load(member) -> pd.DataFrame:
+def _list_load(member) -> pd.DataFrame:
     vals = _values()
     cols = ["id", "type", "category", "amount", "note", "date"]
     rows = [(r + [""] * len(HEADERS))[:len(HEADERS)] for r in vals[1:] if r]
@@ -152,3 +161,63 @@ def load(member) -> pd.DataFrame:
     df["id"] = df["id"].astype(int)
     df = df.sort_values(["date", "id"], ascending=False)[cols].reset_index(drop=True)
     return df
+
+
+# ---------- SQL backend (Postgres / SQLite via DATABASE_URL) ----------
+_engine = None
+_table = None
+
+
+def _sql():
+    global _engine, _table
+    if _engine is None:
+        from sqlalchemy import Column, Float, Integer, MetaData, String, Table, create_engine
+        meta = MetaData()
+        _table = Table(
+            "entries", meta,
+            Column("id", Integer, primary_key=True, autoincrement=True),
+            Column("member", String), Column("type", String), Column("category", String),
+            Column("amount", Float), Column("note", String), Column("date", String),
+        )
+        _engine = create_engine(_sql_url(), pool_pre_ping=True)
+        meta.create_all(_engine)
+    return _engine, _table
+
+
+def _sql_add_entry(member, typ, cat, amount, note, d):
+    from sqlalchemy import insert
+    eng, t = _sql()
+    with eng.begin() as c:
+        c.execute(insert(t).values(member=member, type=typ, category=cat,
+                                   amount=float(amount), note=note, date=d.isoformat()))
+
+
+def _sql_delete_entries(ids):
+    from sqlalchemy import delete
+    eng, t = _sql()
+    with eng.begin() as c:
+        c.execute(delete(t).where(t.c.id.in_([int(i) for i in ids])))
+
+
+def _sql_load(member):
+    from sqlalchemy import select
+    eng, t = _sql()
+    q = (select(t.c.id, t.c.type, t.c.category, t.c.amount, t.c.note, t.c.date)
+         .where(t.c.member == member).order_by(t.c.date.desc(), t.c.id.desc()))
+    with eng.connect() as c:
+        df = pd.read_sql_query(q, c)
+    df["date"] = pd.to_datetime(df["date"])
+    return df
+
+
+# ---------- public API (the app and notifier only use these) ----------
+def add_entry(member, typ, cat, amount, note, d):
+    return (_sql_add_entry if _sql_url() else _list_add_entry)(member, typ, cat, amount, note, d)
+
+
+def delete_entries(ids):
+    return (_sql_delete_entries if _sql_url() else _list_delete_entries)(ids)
+
+
+def load(member) -> pd.DataFrame:
+    return (_sql_load if _sql_url() else _list_load)(member)
