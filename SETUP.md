@@ -9,37 +9,29 @@ android-app/   (optional)
 ```
 
 ---
-## Part 0: Google Sheet as the database (free, once)
+## Part 0: Free online database with Supabase (no Google needed)
 
-**A. Make the sheet**
-1. Go to sheets.google.com -> **Blank spreadsheet**. Name it `MoneyTracker`. Leave it empty.
-2. Look at the address bar: `https://docs.google.com/spreadsheets/d/`**`THIS-LONG-ID`**`/edit`. Copy that long id. This is your `SHEET_ID`.
+1. Go to **supabase.com** -> sign up (GitHub login is fine) -> **New project**.
+2. Name it `MoneyTracker`. For **Database password** use only letters and numbers (no symbols like @ # / ?). Save it. Pick the region nearest you (Mumbai if shown). Click **Create**, wait about 2 minutes.
+3. Click **Connect** at the top of the project page. Open **Connection string**, choose the **Session pooler** tab (not "Direct connection"; GitHub cannot reach that one).
+4. Copy the string. It looks like:
+   `postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`
+5. Replace `[YOUR-PASSWORD]` (with the brackets) by your real password. This whole line is your `DATABASE_URL`.
+The tables are created automatically the first time the app runs.
 
-**B. Make the robot account (service account)**
-1. Go to **console.cloud.google.com** and sign in. Click the project picker at the top -> **New project** -> name `MoneyTracker` -> Create.
-2. Menu -> **APIs & Services -> Library** -> search **Google Sheets API** -> **Enable**.
-3. Menu -> **IAM & Admin -> Service Accounts** -> **Create service account** -> name `money-bot` -> Create and continue -> Done.
-4. Click the new account -> **Keys** tab -> **Add key -> Create new key -> JSON -> Create**. A `.json` file downloads. This file is like a password.
-5. Open the JSON in Notepad and copy the `client_email` value (looks like `money-bot@moneytracker-123.iam.gserviceaccount.com`).
-
-**C. Give the robot access**
-1. Open your `MoneyTracker` sheet -> **Share**.
-2. Paste the `client_email`, set **Editor**, untick "Notify people", click **Share**.
+(Neon, Aiven and CockroachDB also work: paste their Postgres connection string as `DATABASE_URL`. A Google Sheet also still works if you ever set SHEET_ID + GOOGLE_SERVICE_ACCOUNT_JSON, but DATABASE_URL wins when both exist.)
 
 ## Part 1: Deploy the app + PIN lock
 
-1. Put all files in a **private** GitHub repo. Do NOT upload the downloaded `.json` key file.
+1. Put all files in a **private** GitHub repo.
 2. share.streamlit.io -> New app -> your repo -> main file `app.py`.
-3. App -> **Settings -> Secrets**, paste (keep the `'''` lines):
+3. App -> **Settings -> Secrets**, paste:
    ```
-   SHEET_ID = "your-long-sheet-id"
+   DATABASE_URL = "postgresql://postgres.xxxx:YOURPASSWORD@aws-0-xx.pooler.supabase.com:5432/postgres"
    APP_PIN = "choose-a-strong-pin"
-   GOOGLE_SERVICE_ACCOUNT_JSON = '''
-   {paste the whole contents of the downloaded JSON file here}
-   '''
    ```
 4. Save. The app restarts. Both yellow warnings should disappear and it asks for your PIN.
-5. Add a test entry, then open the Google Sheet. You will see the row appear.
+5. Add a test entry. In Supabase -> **Table Editor -> entries** you will see it.
 
 ## Step 1: 10 PM Gmail notification
 
@@ -51,8 +43,7 @@ android-app/   (optional)
    | SMTP_USER | your Gmail address |
    | SMTP_PASS | the 16-letter app password |
    | EMAIL_TO | your email, brother's email (comma separated) |
-   | SHEET_ID | same long sheet id |
-   | GOOGLE_SERVICE_ACCOUNT_JSON | the whole JSON file contents (no `'''`) |
+   | DATABASE_URL | the same Supabase connection string |
    | APP_URL | your Streamlit link |
 
 3. **Test:** Actions -> *Money notifications* -> **Run workflow** -> `daily`. Check inbox (and Spam).
@@ -69,8 +60,8 @@ GitHub pauses scheduled jobs after 60 days of no repo activity. If emails stop, 
 - **Own APK:** Actions -> **Build Android APK** -> Run workflow -> paste your link -> download the artifact (see `android-app/`).
 
 ## Good to know
-- Your sheet is private. Only you and the robot email can open it. You can edit or fix rows in the sheet directly: keep the header row and the column order (id, member, type, category, amount, note, date). Dates must look like `2026-10-09`.
-- The app refreshes from the sheet about every 10 seconds, so a manual edit may take a moment to show.
-- Treat the JSON key like a password. If it leaks: Cloud Console -> Service Accounts -> Keys -> delete it and make a new one.
-- If you see "APIError 403": the sheet is not shared with the `client_email`, or Sheets API is not enabled. "APIError 404": wrong SHEET_ID.
-- If emails show all ₹0: the two secrets are missing or wrong in GitHub (the job now stops with an error instead).
+- Supabase free projects can pause after about a week with no activity (check their site, free plans change). If the app errors after a long break, open the Supabase dashboard and click **Restore project**.
+- If the password has special characters, the connection fails. Reset it in Supabase -> Project Settings -> Database to letters and numbers only.
+- "could not translate host name" or a timeout in GitHub: you used the Direct connection string. Use the **Session pooler** one.
+- If emails show all ₹0 the job now stops with an error instead: check `DATABASE_URL` in GitHub secrets.
+- Keep the connection string private. If it leaks, reset the database password in Supabase and update both secrets.
