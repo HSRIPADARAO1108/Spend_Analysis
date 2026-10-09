@@ -11,18 +11,19 @@ from db import add_entry, delete_entries, load, using_local_file
 
 # ---------- Config ----------
 IST = ZoneInfo("Asia/Kolkata")
-MEMBERS = ["Sripada", "My Brother"]
+MEMBERS = ["Sripada", "Vyasa"]
 THEME = {
     "Sripada": "linear-gradient(120deg,#6c5ce7,#f06595,#ff922b,#6c5ce7)",
-    "My Brother": "linear-gradient(120deg,#ff922b,#fcc419,#51cf66,#ff922b)",
+    "Vyasa": "linear-gradient(120deg,#ff922b,#fcc419,#51cf66,#ff922b)",
 }
 SPEND_CATS = {
-    "Food": ("🍔", "#ff8a3d"), "Travel": ("🚌", "#4dabf7"), "Shopping": ("🛍️", "#f06595"),
-    "Bills": ("💡", "#f5b800"), "Rent": ("🏠", "#20c997"), "Fun": ("🎮", "#9775fa"),
-    "Other": ("✨", "#ff5d73"),
+    "Food": ("🍔", "#ff8a3d"), "Fuel": ("⛽", "#e8590c"), "Travel": ("🚌", "#4dabf7"),
+    "Shopping": ("🛍️", "#f06595"), "Bills": ("💡", "#f5b800"), "Rent": ("🏠", "#20c997"),
+    "Fun": ("🎮", "#9775fa"), "Other": ("✨", "#ff5d73"),
 }
 EARN_CATS = {
     "Salary": ("💼", "#12b886"), "Freelance": ("💻", "#0ca678"),
+    "Mutt": ("🛕", "#7048e8"),
     "Gift": ("🎁", "#ff6b9d"), "Other": ("✨", "#51cf66"),
 }
 ICON = {**{k: v[0] for k, v in EARN_CATS.items()}, **{k: v[0] for k, v in SPEND_CATS.items()}}
@@ -45,6 +46,9 @@ st.markdown(
 /* FIX: push content below Streamlit's top bar and hide Share/star/edit/GitHub buttons */
 .block-container{max-width:1100px;padding-top:4.2rem;padding-bottom:3rem}
 [data-testid="stToolbar"],[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none !important}
+/* Try to hide the "Created by / Hosted with Streamlit" badge (may not work on Community Cloud) */
+[class*="viewerBadge"],[data-testid="stAppViewerBadge"],a[href*="streamlit.io/cloud"],
+._container_gzau3_1,._viewerBadge_nim44_23{display:none !important}
 header[data-testid="stHeader"]{background:transparent}
 .hero{position:relative;overflow:hidden;border-radius:26px;padding:20px 22px;color:#fff;margin-bottom:14px;
   background-size:300% 300%;animation:drift 9s ease infinite;box-shadow:0 10px 24px rgba(108,92,231,.28)}
