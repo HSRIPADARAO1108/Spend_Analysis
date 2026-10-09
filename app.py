@@ -44,7 +44,7 @@ st.markdown(
 
 .stApp{background:linear-gradient(135deg,#fff7ec,#ffe8f1,#e8e4ff,#e3f9ee,#fff7ec);background-size:400% 400%;animation:drift 22s ease infinite}
 /* FIX: push content below Streamlit's top bar and hide Share/star/edit/GitHub buttons */
-.block-container{max-width:1100px;padding-top:4.2rem;padding-bottom:3rem}
+.block-container{max-width:1200px;width:100%;padding-top:4.2rem;padding-bottom:3rem}
 [data-testid="stToolbar"],[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none !important}
 /* Try to hide the "Created by / Hosted with Streamlit" badge (may not work on Community Cloud) */
 [class*="viewerBadge"],[data-testid="stAppViewerBadge"],a[href*="streamlit.io/cloud"],
@@ -52,7 +52,7 @@ st.markdown(
 header[data-testid="stHeader"]{background:transparent}
 .hero{position:relative;overflow:hidden;border-radius:26px;padding:20px 22px;color:#fff;margin-bottom:14px;
   background-size:300% 300%;animation:drift 9s ease infinite;box-shadow:0 10px 24px rgba(108,92,231,.28)}
-.hero h1{margin:0;font-size:2rem;font-weight:800;color:#fff;position:relative}
+.hero h1{margin:0;font-size:clamp(1.35rem,4.5vw,2.2rem);font-weight:800;color:#fff;position:relative;overflow-wrap:anywhere}
 .hero p{margin:2px 0 0;font-weight:700;position:relative}
 .fl{position:absolute;font-size:1.8rem;animation:floaty 4s ease-in-out infinite;opacity:.85}
 .f1{right:6%;top:12%}.f2{right:18%;bottom:8%;animation-delay:1s}.f3{right:30%;top:20%;animation-delay:2s}
@@ -61,7 +61,7 @@ header[data-testid="stHeader"]{background:transparent}
 .tile::after{content:"";position:absolute;top:0;left:0;width:40%;height:100%;
   background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);animation:shine 4.5s ease-in-out infinite}
 .tile .l{font-weight:700;opacity:.95}
-.tile .v{font-size:2rem;font-weight:800;line-height:1.15;word-break:break-word}
+.tile .v{font-size:clamp(1.5rem,3.2vw,2rem);font-weight:800;line-height:1.15;word-break:break-word}
 .tile .m{font-weight:700;font-size:.9rem;opacity:.95;margin-top:2px}
 .earn{background:linear-gradient(135deg,#12b886,#63e6be)}
 .spend{background:linear-gradient(135deg,#ff5d73,#ffa94d);animation-delay:.1s}
@@ -131,11 +131,42 @@ div[role="radiogroup"] label:hover{transform:translateY(-2px) scale(1.04)}
 .hero h1{animation:pop .7s ease both}
 .chip small{font-size:1.05rem}
 
+/* ===== RESPONSIVE: base (all screens) ===== */
+html,body,.stApp{overflow-x:hidden}
+div[data-baseweb="tab-list"]{overflow-x:auto;flex-wrap:nowrap;gap:4px;padding:4px 2px 8px;scrollbar-width:none}
+div[data-baseweb="tab-list"]::-webkit-scrollbar{display:none}
+button[data-baseweb="tab"]{flex:0 0 auto;white-space:nowrap}
+div[role="radiogroup"]{flex-wrap:wrap}
+[data-testid="stPlotlyChart"],[data-testid="stDataFrame"],[data-testid="stDataEditor"]{max-width:100%}
+input,select,textarea{font-size:16px !important}
+.stButton>button,[data-testid="stFormSubmitButton"]>button,.stDownloadButton>button{min-height:46px}
+
+/* ===== TABLET (and small laptops): columns wrap 2 per row ===== */
+@media (max-width:1024px){
+  .block-container{padding-left:1.2rem;padding-right:1.2rem}
+  [data-testid="stHorizontalBlock"]{flex-wrap:wrap !important;gap:.75rem}
+  [data-testid="stColumn"]{min-width:calc(50% - .75rem) !important;flex:1 1 calc(50% - .75rem) !important}
+}
+
+/* ===== MOBILE: everything stacks, compact sizes ===== */
 @media (max-width:640px){
-  .block-container{padding-left:.8rem;padding-right:.8rem;padding-top:3.6rem}
-  .hero{padding:16px}.hero h1{font-size:1.5rem}.fl{font-size:1.3rem}
-  .tile .v{font-size:1.6rem}
-  button[data-baseweb="tab"]{padding:5px 10px;font-size:.85rem}
+  .block-container{padding-left:.8rem;padding-right:.8rem;padding-top:3.6rem;padding-bottom:max(2.5rem,env(safe-area-inset-bottom))}
+  [data-testid="stColumn"]{min-width:100% !important;flex:1 1 100% !important}
+  .hero{padding:16px;border-radius:20px}
+  .hero p{font-size:.85rem}
+  .fl{font-size:1.2rem}.f3{display:none}
+  .tile{padding:12px 14px;border-radius:18px}
+  .chip{padding:6px 10px;font-size:.85rem}
+  .top{font-size:.9rem}
+  div[role="radiogroup"] label{padding:5px 12px}
+  h2,h3{font-size:1.2rem !important}
+  button[data-baseweb="tab"]{padding:5px 12px;font-size:.85rem}
+  .stButton>button,.stDownloadButton>button{width:100%}
+}
+
+/* ===== LAPTOP / LARGE DESKTOP: use more width ===== */
+@media (min-width:1400px){
+  .block-container{max-width:1320px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 </style>
@@ -229,8 +260,10 @@ def category_section(df, key):
         st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
     with b:
         fig = px.pie(sp, names="category", values="amount", hole=0.5, color="category", color_discrete_map=COLOR)
-        fig.update_traces(textinfo="percent+label", marker=dict(line=dict(color="#fff", width=2)))
-        fig.update_layout(height=320, margin=dict(t=10, b=10, l=10, r=10), showlegend=False, paper_bgcolor="rgba(0,0,0,0)")
+        fig.update_traces(textinfo="percent", textposition="inside", marker=dict(line=dict(color="#fff", width=2)))
+        fig.update_layout(height=360, margin=dict(t=10, b=10, l=10, r=10), showlegend=True,
+                          legend=dict(orientation="h", y=-0.05, x=0.5, xanchor="center"),
+                          paper_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, use_container_width=True, key=key)
 
 
@@ -353,6 +386,7 @@ with t_year:
                  color_discrete_map={"earn": "#12b886", "spend": "#ff5d73"})
     fig.add_scatter(x=piv.index, y=piv["left"], mode="lines+markers", name="left",
                     line=dict(color="#6c5ce7", width=4), marker=dict(size=9))
+    fig.update_xaxes(tickangle=-45, automargin=True)
     st.plotly_chart(chart_style(fig), use_container_width=True, key="year_bar")
 
     table = piv[["earn", "spend", "left"]].rename(columns={"earn": "Earned", "spend": "Spent", "left": "Left"})
